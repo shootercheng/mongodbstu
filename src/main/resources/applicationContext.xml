@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>    
+<beans xmlns="http://www.springframework.org/schema/beans"    
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"   
+    xmlns:p="http://www.springframework.org/schema/p"  
+    xmlns:aop="http://www.springframework.org/schema/aop"   
+    xmlns:context="http://www.springframework.org/schema/context"  
+    xmlns:jee="http://www.springframework.org/schema/jee"  
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xmlns:mongo="http://www.springframework.org/schema/data/mongo"
+    xsi:schemaLocation="    
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd  
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd  
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd  
+        http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-4.0.xsd  
+        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+        http://www.springframework.org/schema/data/mongo
+        http://www.springframework.org/schema/data/mongo/spring-mongo-1.10.xsd">
+	
+	<bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<!--单个配置文件-->
+		<!--<property name="location" value="classpath:jdbc.properties" />-->
+		<!--多个配置文件-->
+		<property name="locations">
+			<!--要是有多个配置文件，只需在这里继续添加即可 --> 
+			<list>
+				<value>classpath:mongo.properties</value>
+			</list>
+		</property>  
+	</bean>
+    
+	<!-- 
+		配置mongo对象
+		replica-set:主机ip+port
+		credentials:用户名:密码@数据库名
+	 -->
+	<mongo:mongo-client id="mongo" replica-set="${mongo.hostport}"
+		credentials="${mongo.username}:${mongo.password}@${mongo.databaseName}">
+		<mongo:client-options connections-per-host="${mongo.connectionsPerHost}"
+			threads-allowed-to-block-for-connection-multiplier="${mongo.threadsAllowedToBlockForConnectionMultiplier}"
+			connect-timeout="${mongo.connectTimeout}" max-wait-time="${mongo.maxWaitTime}"
+			socket-keep-alive="${mongo.socketKeepAlive}" socket-timeout="${mongo.socketTimeout}" />
+	</mongo:mongo-client>
+
+	<!-- 设置使用的数据库名,如在mongo对象中已制定数据库,可省略这一步 -->
+	<!-- <mongo:db-factory dbname="mytest" mongo-ref="mongo" /> -->
+	
+	<!-- 
+		配置mongodb的模板 ,这一步是通过引用以下的构造方法配置的:
+		public MongoTemplate(Mongo mongo, String databaseName) {
+			this(new SimpleMongoDbFactory(mongo, databaseName), null);
+		}
+		其他方法可自行查看源码	
+	-->
+	<bean id="mongoTemplate" class="org.springframework.data.mongodb.core.MongoTemplate">
+		<constructor-arg ref="mongo" />
+		<constructor-arg name="databaseName" value="${mongo.databaseName}" />
+	</bean>
+	
+	<!-- 自动扫描 -->
+	<context:component-scan base-package="com.scd.service" />
+	<context:component-scan base-package="com.scd.dao" />
+	<context:component-scan base-package="com.scd.model" />
+</beans>
