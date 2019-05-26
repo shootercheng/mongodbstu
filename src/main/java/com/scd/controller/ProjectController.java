@@ -20,12 +20,15 @@ import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
@@ -91,6 +94,49 @@ public class ProjectController {
 	public List<Project> findList(){
 		return projectService.find("projectStatus", "1", Project.class, COL_NAME);
 	}
+	
+	@RequestMapping(value="/single/fileupload.do", method = RequestMethod.POST)
+	public Map<String, Object> uploadOneFile(@RequestParam("file") MultipartFile multipartFile,String aliasename){
+		Map<String, Object> map = new HashMap<>();
+		try{
+			String fileid = UUID.randomUUID().toString();
+			String objId = mongoFileService.saveFileByInputStream(FLE_COL_NAME, multipartFile.getInputStream(), fileid, 
+					aliasename, multipartFile.getOriginalFilename());
+			if(! StringUtils.isEmpty(objId)){
+				map.put("fileid", fileid);
+				map.put("msg", HttpStatus.OK.name());
+				map.put("status", HttpStatus.OK);
+			}
+		}catch(Exception e){
+			e.printStackTrace();
+//			LOGGER.info("aaa");
+		}
+		return map;
+	}
+	
+	@RequestMapping(value="/multi/fileupload.do", method = RequestMethod.POST)
+	public Map<String, Object> uploadMultiFile(@RequestParam("files") MultipartFile[] multipartFiles,@RequestParam("name") String aliasename){
+		Map<String, Object> map = new HashMap<>();
+		try{
+			List<String> fileids = new ArrayList<>(10);
+			for(MultipartFile multipartFile : multipartFiles){
+				String fileid = UUID.randomUUID().toString();
+				String objId = mongoFileService.saveFileByInputStream(FLE_COL_NAME, multipartFile.getInputStream(), fileid, 
+						aliasename, multipartFile.getOriginalFilename());
+				if(! StringUtils.isEmpty(objId)){
+					fileids.add(fileid);
+				}
+			}
+			map.put("fileid", fileids);
+			map.put("msg", HttpStatus.OK.name());
+			map.put("status", HttpStatus.OK);
+		}catch(Exception e){
+			e.printStackTrace();
+//			LOGGER.info("aaa");
+		}
+		return map;
+	}
+	
 	
 	@RequestMapping(value="/fileupload.do", method = RequestMethod.POST)
 	public Map<String, Object> uploadFileToMongo(HttpServletRequest request, String companyid){
@@ -201,41 +247,31 @@ public class ProjectController {
 				}
 			}
 		}
-    }
+	}
 	
-	@RequestMapping(value="/image.do", method = RequestMethod.GET, 
-			produces = {MediaType.IMAGE_PNG_VALUE})
-	public void getImage(String fileId, HttpServletResponse response){
-		Assert.notNull(fileId, "param fileId is null");
+	/**
+	 * 小文件下载方式
+	 * @param fileId
+	 * @return
+	 */
+	@RequestMapping(value="/image.do", method = RequestMethod.GET)
+	public ResponseEntity<byte[]> donwByteFile(String fileId){
 		GridFSDBFile gridFSDBFile = mongoFileService.findFileById(FLE_COL_NAME, fileId);
 		InputStream inputStream = gridFSDBFile.getInputStream();
-		byte[] buffer = new byte[1024];
-        BufferedInputStream bis = null;
-        try{
-	        bis = new BufferedInputStream(inputStream);
-	        OutputStream os = response.getOutputStream();
-	        int i = bis.read(buffer);
-	        while (i != -1) {
-	            os.write(buffer, 0, i);
-	            i = bis.read(buffer);
-	        }
-        }catch(Exception e){
-        	e.printStackTrace();
-        }finally {
-			if(bis != null){
-				try {
-					bis.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-			if(inputStream != null){
-				try {
-					inputStream.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
+		byte[] imgbyte = new byte[(int) gridFSDBFile.getLength()];
+		String filename = gridFSDBFile.getFilename();
+		ResponseEntity<byte[]> responseEntity = null;
+		try {
+			inputStream.read(imgbyte);
+			HttpHeaders headers=new HttpHeaders();
+			headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+			filename = filename.replace(" ", "_");
+			filename = new String(filename.getBytes("UTF-8"), "ISO-8859-1");
+			headers.add("Content-Disposition","attachment;filename="+filename);
+			responseEntity = new ResponseEntity<byte[]>(imgbyte, HttpStatus.OK);
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
+		return responseEntity;
 	}
 }
