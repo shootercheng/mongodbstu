@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>下载 byte文件流</title>
+<script type="text/javascript" src="../js/jquery/jquery-3.3.1.min.js"></script>
+</head>
+<body>
+<script type="text/javascript">
+
+	$(document).ready(function(){
+		alert("page init");
+		var date = new Date();
+		var filename = date.getTime() + '.png';
+		downFile2('b91ca4e9-6432-4ab4-afb9-f45d2b370291', filename);
+	});
+
+	function downFile(fileId, filename){
+		var a = {};
+		a.account = "chengdu";
+		var b = JSON.stringify(a);
+		$.ajax({
+		    url:"/mongodbstu/image.do",    //请求的url地址
+		    headers:{"project-id":"001","user-info": b},
+		    async:true,   //请求是否异步，默认为异步，这也是ajax重要特性
+		    data:{"fileId" : fileId},    //参数值,键值对
+		    type:"GET",   //请求方式
+		    beforeSend:function(){
+		    },
+		    success:function(data,textStatus,xhr){
+		    	let type = xhr.getResponseHeader('Content-Type')
+		        let blob = new Blob([data], {type: type})
+	            if ('download' in document.createElement('a')) { // 非IE下载
+	              const elink = document.createElement('a');
+	              elink.download = filename;
+	              elink.style.display = 'none';
+	              elink.href = URL.createObjectURL(blob);
+	              document.body.appendChild(elink);
+	              elink.click();
+	              URL.revokeObjectURL(elink.href); // 释放URL 对象
+	              document.body.removeChild(elink);
+	            } else { // IE10+下载
+	               navigator.msSaveBlob(blob, fileName);
+	            }
+		    },
+		    complete:function(){
+		    },
+		    error:function(){
+		    }
+		});
+	}
+	
+	function downFile2(fileId, filename){
+		 let xhr = new XMLHttpRequest()
+	      var url = '/mongodbstu/image.do?fileId='+fileId; 
+	      xhr.open('GET', url, true)
+	      xhr.responseType = 'arraybuffer'
+	      var a = {};
+		  a.account = "chengdu";
+		  var b = JSON.stringify(a);
+		  xhr.setRequestHeader('project-id', '001')
+	      xhr.setRequestHeader('user-info', b); // 请求头中的验证信息等（如果有）
+	      xhr.onload = function() {
+	        if (this.status === 200) {
+	          let type = xhr.getResponseHeader('Content-Type')
+	          let blob = new Blob([this.response], {type: type})
+	          if (typeof window.navigator.msSaveBlob !== 'undefined') {
+	            /*
+	             * IE workaround for "HTML7007: One or more blob URLs were revoked by closing
+	             * the blob for which they were created. These URLs will no longer resolve as 
+	             * the data backing the URL has been freed." 
+	             */
+	            window.navigator.msSaveBlob(blob, fileName)
+	          } else {
+	            let URL = window.URL || window.webkitURL
+	            let objectUrl = URL.createObjectURL(blob)
+	            if (filename) {
+	              var a = document.createElement('a')
+	              // safari doesn't support this yet
+	              if (typeof a.download === 'undefined') {
+	                window.location = objectUrl
+	              } else {
+	                a.href = objectUrl
+	                a.download = filename
+	                document.body.appendChild(a)
+	                a.click()
+	                a.remove()
+	              }
+	            } else {
+	              window.location = objectUrl
+	            }
+	          }
+	        }
+	      }
+	      xhr.send()
+	}
+</script>
+</body>
+</html>

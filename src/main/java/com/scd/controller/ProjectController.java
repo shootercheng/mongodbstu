@@ -255,7 +255,9 @@ public class ProjectController {
 	 * @return
 	 */
 	@RequestMapping(value="/image.do", method = RequestMethod.GET)
-	public ResponseEntity<byte[]> donwByteFile(String fileId){
+	public ResponseEntity<byte[]> donwByteFile(String fileId, HttpServletRequest request){
+		String projectId = request.getHeader("project-id");
+		String userInfo = request.getHeader("user-info");
 		GridFSDBFile gridFSDBFile = mongoFileService.findFileById(FLE_COL_NAME, fileId);
 		InputStream inputStream = gridFSDBFile.getInputStream();
 		byte[] imgbyte = new byte[(int) gridFSDBFile.getLength()];
